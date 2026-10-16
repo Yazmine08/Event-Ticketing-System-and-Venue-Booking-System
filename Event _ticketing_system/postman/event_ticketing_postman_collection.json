@@ -1,0 +1,363 @@
+{
+  "info": {
+    "name": "Event Ticketing & Venue Booking REST API (SWC3633/SWC4443)",
+    "_postman_id": "a9b1c2d3-e4f5-4789-9abc-1234567890ab",
+    "description": "Comprehensive Postman test collection for SWC3633 / SWC4443 Web API Development project. Integrates MySQL event_ticketing_db, JWT Authentication, API Key security, RBAC, CRUD on /users, /venues, /events, /bookings, external QR Code API, PDF Generation API, and telemetry logging.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "base_url", "value": "http://127.0.0.1:8000", "type": "string" },
+    { "key": "admin_token", "value": "", "type": "string" },
+    { "key": "org_token", "value": "", "type": "string" },
+    { "key": "cust_token", "value": "", "type": "string" },
+    { "key": "admin_api_key", "value": "adm_live_key_9876543210abcdef", "type": "string" },
+    { "key": "test_ticket_code", "value": "TKT001", "type": "string" }
+  ],
+  "item": [
+    {
+      "name": "1. Authentication",
+      "item": [
+        {
+          "name": "Login as Admin (Success - 200)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200', function () { pm.response.to.have.status(200); });",
+                  "var jsonData = pm.response.json();",
+                  "pm.collectionVariables.set('admin_token', jsonData.data.access_token);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"admin@example.com\",\n  \"password\": \"password123\"\n}"
+            },
+            "url": { "raw": "{{base_url}}/api/auth/login", "host": ["{{base_url}}"], "path": ["api", "auth", "login"] }
+          }
+        },
+        {
+          "name": "Login as Organiser (Success - 200)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200', function () { pm.response.to.have.status(200); });",
+                  "var jsonData = pm.response.json();",
+                  "pm.collectionVariables.set('org_token', jsonData.data.access_token);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"aina@example.com\",\n  \"password\": \"password123\"\n}"
+            },
+            "url": { "raw": "{{base_url}}/api/auth/login", "host": ["{{base_url}}"], "path": ["api", "auth", "login"] }
+          }
+        },
+        {
+          "name": "Login as Customer (Success - 200)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200', function () { pm.response.to.have.status(200); });",
+                  "var jsonData = pm.response.json();",
+                  "pm.collectionVariables.set('cust_token', jsonData.data.access_token);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"sarah@example.com\",\n  \"password\": \"password123\"\n}"
+            },
+            "url": { "raw": "{{base_url}}/api/auth/login", "host": ["{{base_url}}"], "path": ["api", "auth", "login"] }
+          }
+        },
+        {
+          "name": "Register New Customer (Success - 201)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"full_name\": \"Farid Kamil\",\n  \"email\": \"farid.kamil@example.com\",\n  \"password\": \"password123\",\n  \"role\": \"customer\",\n  \"phone\": \"0129998877\"\n}"
+            },
+            "url": { "raw": "{{base_url}}/api/auth/register", "host": ["{{base_url}}"], "path": ["api", "auth", "register"] }
+          }
+        },
+        {
+          "name": "Login Invalid Credentials (Error - 401)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"admin@example.com\",\n  \"password\": \"wrongpassword\"\n}"
+            },
+            "url": { "raw": "{{base_url}}/api/auth/login", "host": ["{{base_url}}"], "path": ["api", "auth", "login"] }
+          }
+        },
+        {
+          "name": "Get Current Profile (Bearer Token - 200)",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{cust_token}}" }],
+            "url": { "raw": "{{base_url}}/api/auth/me", "host": ["{{base_url}}"], "path": ["api", "auth", "me"] }
+          }
+        },
+        {
+          "name": "Get Current Profile via API Key Header (200)",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "X-API-Key", "value": "{{admin_api_key}}" }],
+            "url": { "raw": "{{base_url}}/api/auth/me", "host": ["{{base_url}}"], "path": ["api", "auth", "me"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "2. Users Resource (/users)",
+      "item": [
+        {
+          "name": "List Users with Pagination & Role Filter [Admin] (200)",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{admin_token}}" }],
+            "url": {
+              "raw": "{{base_url}}/api/users?page=1&limit=5&role=customer",
+              "host": ["{{base_url}}"],
+              "path": ["api", "users"],
+              "query": [
+                { "key": "page", "value": "1" },
+                { "key": "limit", "value": "5" },
+                { "key": "role", "value": "customer" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "List Users as Customer (Forbidden - 403)",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{cust_token}}" }],
+            "url": { "raw": "{{base_url}}/api/users", "host": ["{{base_url}}"], "path": ["api", "users"] }
+          }
+        },
+        {
+          "name": "Get User by ID (200)",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{admin_token}}" }],
+            "url": { "raw": "{{base_url}}/api/users/1", "host": ["{{base_url}}"], "path": ["api", "users", "1"] }
+          }
+        },
+        {
+          "name": "Create User [Admin Only] (201)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{admin_token}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"full_name\": \"Zainal Abidin\",\n  \"email\": \"zainal@example.com\",\n  \"password\": \"password123\",\n  \"role\": \"organiser\",\n  \"phone\": \"0138887766\"\n}"
+            },
+            "url": { "raw": "{{base_url}}/api/users", "host": ["{{base_url}}"], "path": ["api", "users"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "3. Venues Resource (/venues)",
+      "item": [
+        {
+          "name": "List Venues (Public - 200)",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{base_url}}/api/venues?limit=10", "host": ["{{base_url}}"], "path": ["api", "venues"] }
+          }
+        },
+        {
+          "name": "Get Venue by ID (200)",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{base_url}}/api/venues/1", "host": ["{{base_url}}"], "path": ["api", "venues", "1"] }
+          }
+        },
+        {
+          "name": "Create Venue [Admin/Organiser] (201)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{admin_token}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"venue_name\": \"Putrajaya International Convention Centre\",\n  \"location\": \"Presint 5, Putrajaya\",\n  \"capacity\": 4500,\n  \"description\": \"World-class hilltop convention centre\"\n}"
+            },
+            "url": { "raw": "{{base_url}}/api/venues", "host": ["{{base_url}}"], "path": ["api", "venues"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "4. Events Resource (/events)",
+      "item": [
+        {
+          "name": "List Events with Search & Sorting (200)",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/api/events?page=1&limit=5&sort_by=ticket_price&order=asc",
+              "host": ["{{base_url}}"],
+              "path": ["api", "events"],
+              "query": [
+                { "key": "page", "value": "1" },
+                { "key": "limit", "value": "5" },
+                { "key": "sort_by", "value": "ticket_price" },
+                { "key": "order", "value": "asc" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Event Details (200)",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{base_url}}/api/events/1", "host": ["{{base_url}}"], "path": ["api", "events", "1"] }
+          }
+        },
+        {
+          "name": "Create Event Exceeding Venue Capacity (Error - 400)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{org_token}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"event_name\": \"Massive Stadium Festival\",\n  \"description\": \"Excessive ticket test exceeding capacity.\",\n  \"category_id\": 1,\n  \"venue_id\": 4,\n  \"event_date\": \"2026-11-25\",\n  \"start_time\": \"19:00:00\",\n  \"end_time\": \"23:00:00\",\n  \"ticket_price\": 80.00,\n  \"total_tickets\": 50000\n}"
+            },
+            "url": { "raw": "{{base_url}}/api/events", "host": ["{{base_url}}"], "path": ["api", "events"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "5. Bookings Resource (/bookings)",
+      "item": [
+        {
+          "name": "Create Booking with External QR API (201)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{cust_token}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"event_id\": 1,\n  \"quantity\": 2,\n  \"payment_method\": \"card\"\n}"
+            },
+            "url": { "raw": "{{base_url}}/api/bookings", "host": ["{{base_url}}"], "path": ["api", "bookings"] }
+          }
+        },
+        {
+          "name": "Get Customer Bookings (200)",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{cust_token}}" }],
+            "url": { "raw": "{{base_url}}/api/bookings", "host": ["{{base_url}}"], "path": ["api", "bookings"] }
+          }
+        },
+        {
+          "name": "Get Live External QR Code Image (image/png - 200)",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{cust_token}}" }],
+            "url": { "raw": "{{base_url}}/api/bookings/1/qrcode", "host": ["{{base_url}}"], "path": ["api", "bookings", "1", "qrcode"] }
+          }
+        },
+        {
+          "name": "Download PDF Ticket with Embedded External QR (application/pdf - 200)",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{cust_token}}" }],
+            "url": { "raw": "{{base_url}}/api/bookings/1/pdf", "host": ["{{base_url}}"], "path": ["api", "bookings", "1", "pdf"] }
+          }
+        },
+        {
+          "name": "Gate Admission QR Verification (200)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{admin_token}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"ticket_code\": \"TKT001\"\n}"
+            },
+            "url": { "raw": "{{base_url}}/api/bookings/verify-ticket", "host": ["{{base_url}}"], "path": ["api", "bookings", "verify-ticket"] }
+          }
+        },
+        {
+          "name": "Cancel Booking (200)",
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Authorization", "value": "Bearer {{cust_token}}" }],
+            "url": { "raw": "{{base_url}}/api/bookings/1/cancel", "host": ["{{base_url}}"], "path": ["api", "bookings", "1", "cancel"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "6. API Management & Telemetry",
+      "item": [
+        {
+          "name": "System Health & External Services Status (200)",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{base_url}}/api/stats/health", "host": ["{{base_url}}"], "path": ["api", "stats", "health"] }
+          }
+        },
+        {
+          "name": "External API Interaction Telemetry Logs (200)",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{admin_token}}" }],
+            "url": { "raw": "{{base_url}}/api/stats/external-apis", "host": ["{{base_url}}"], "path": ["api", "stats", "external-apis"] }
+          }
+        },
+        {
+          "name": "Root Endpoints Compatibility (/events - 200)",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{base_url}}/events?limit=5", "host": ["{{base_url}}"], "path": ["events"] }
+          }
+        }
+      ]
+    }
+  ]
+}
